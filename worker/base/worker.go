@@ -60,6 +60,7 @@ import (
 	"github.com/docker/docker/layer"
 	refstore "github.com/docker/docker/reference"
 	"github.com/moby/buildkit/cache/metadata"
+	"github.com/moby/buildkit/exporter/envd"
 	"github.com/moby/buildkit/snapshot"
 	containerdsnapshot "github.com/moby/buildkit/snapshot/containerd"
 	"github.com/moby/buildkit/util/leaseutil"
@@ -102,10 +103,11 @@ type WorkerOpt struct {
 // TODO: s/Worker/OpWorker/g ?
 type Worker struct {
 	WorkerOpt
-	CacheMgr      cache.Manager
-	SourceManager *source.Manager
-	imageWriter   *imageexporter.ImageWriter
-	ImageSource   *containerimage.Source
+	CacheMgr        cache.Manager
+	SourceManager   *source.Manager
+	imageWriter     *imageexporter.ImageWriter
+	ImageSource     *containerimage.Source
+	defaultExporter exporter.Exporter
 }
 
 // NewWorker instantiates a local worker
@@ -269,6 +271,20 @@ func NewWorker(ctx context.Context, opt WorkerOpt) (*Worker, error) {
 	}
 	sm.Register(ss)
 
+	differ, ok := snapshotter.(envd.Differ)
+	if !ok {
+		return nil, errors.Errorf("snapshotter doesn't support differ")
+	}
+
+	exp, err := envd.New(envd.Opt{
+		ImageStore:     imageStore,
+		ReferenceStore: referenceStore,
+		Differ:         differ,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	iw, err := imageexporter.NewImageWriter(imageexporter.WriterOpt{
 		Snapshotter:  opt.Snapshotter,
 		ContentStore: opt.ContentStore,
@@ -288,11 +304,12 @@ func NewWorker(ctx context.Context, opt WorkerOpt) (*Worker, error) {
 	}
 
 	return &Worker{
-		WorkerOpt:     opt,
-		CacheMgr:      cm,
-		SourceManager: sm,
-		imageWriter:   iw,
-		ImageSource:   is,
+		WorkerOpt:       opt,
+		CacheMgr:        cm,
+		SourceManager:   sm,
+		imageWriter:     iw,
+		ImageSource:     is,
+		defaultExporter: exp,
 	}, nil
 }
 
@@ -449,6 +466,8 @@ func (w *Worker) Prune(ctx context.Context, ch chan client.UsageInfo, opt ...cli
 
 func (w *Worker) Exporter(name string, sm *session.Manager) (exporter.Exporter, error) {
 	switch name {
+	case "envd":
+		return w.defaultExporter, nil
 	case client.ExporterImage:
 		return imageexporter.New(imageexporter.Opt{
 			Images:         w.ImageStore,
