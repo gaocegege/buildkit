@@ -13,6 +13,7 @@ import (
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/remotes/docker"
 	distreference "github.com/docker/distribution/reference"
+	dockerimage "github.com/docker/docker/image"
 	"github.com/moby/buildkit/session"
 	"github.com/moby/buildkit/source"
 	"github.com/moby/buildkit/version"
@@ -124,8 +125,9 @@ type Resolver struct {
 	handler *authHandlerNS
 	auth    *dockerAuthorizer
 
-	is   images.Store
-	mode source.ResolveMode
+	is       images.Store
+	dockerIS dockerimage.Store
+	mode     source.ResolveMode
 }
 
 // HostsFunc implements registry configuration of this Resolver
@@ -186,6 +188,15 @@ func (r *Resolver) WithImageStore(is images.Store, mode source.ResolveMode) *Res
 	return &r2
 }
 
+// WithImageStore returns new resolver that can also resolve from local images store
+func (r *Resolver) WithDockerImageStore(is dockerimage.Store, mode source.ResolveMode) *Resolver {
+	r2 := *r
+	r2.Resolver = r.Resolver
+	r2.dockerIS = is
+	r2.mode = mode
+	return &r2
+}
+
 // Fetcher returns a new fetcher for the provided reference.
 func (r *Resolver) Fetcher(ctx context.Context, ref string) (remotes.Fetcher, error) {
 	if atomic.LoadInt64(&r.handler.counter) == 0 {
@@ -196,11 +207,6 @@ func (r *Resolver) Fetcher(ctx context.Context, ref string) (remotes.Fetcher, er
 
 // Resolve attempts to resolve the reference into a name and descriptor.
 func (r *Resolver) Resolve(ctx context.Context, ref string) (string, ocispecs.Descriptor, error) {
-	if r.mode == source.ResolveModePreferLocal && r.is != nil {
-		if img, err := r.is.Get(ctx, ref); err == nil {
-			return ref, img.Target, nil
-		}
-	}
 
 	n, desc, err := r.Resolver.Resolve(ctx, ref)
 	if err == nil {

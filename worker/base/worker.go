@@ -15,9 +15,9 @@ import (
 	"github.com/containerd/containerd/leases"
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/containerd/remotes/docker"
+	"github.com/docker/docker/image"
 	"github.com/docker/docker/pkg/idtools"
 	"github.com/moby/buildkit/cache"
-	"github.com/moby/buildkit/cache/metadata"
 	"github.com/moby/buildkit/client"
 	"github.com/moby/buildkit/client/llb"
 	"github.com/moby/buildkit/executor"
@@ -29,8 +29,6 @@ import (
 	"github.com/moby/buildkit/frontend"
 	"github.com/moby/buildkit/identity"
 	"github.com/moby/buildkit/session"
-	"github.com/moby/buildkit/snapshot"
-	"github.com/moby/buildkit/snapshot/imagerefchecker"
 	"github.com/moby/buildkit/solver"
 	"github.com/moby/buildkit/solver/llbsolver/mounts"
 	"github.com/moby/buildkit/solver/llbsolver/ops"
@@ -49,6 +47,23 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/semaphore"
+
+	containerdlocal "github.com/containerd/containerd/content/local"
+	ctdmetadata "github.com/containerd/containerd/metadata"
+	"github.com/containerd/containerd/snapshots"
+	dockersnapshot "github.com/docker/docker/builder/builder-next/adapters/snapshot"
+	"github.com/docker/docker/builder/builder-next/imagerefchecker"
+	"github.com/docker/docker/daemon/graphdriver"
+	dockermetadata "github.com/docker/docker/distribution/metadata"
+	"github.com/docker/docker/distribution/xfer"
+	dockerimage "github.com/docker/docker/image"
+	"github.com/docker/docker/layer"
+	refstore "github.com/docker/docker/reference"
+	"github.com/moby/buildkit/cache/metadata"
+	"github.com/moby/buildkit/snapshot"
+	containerdsnapshot "github.com/moby/buildkit/snapshot/containerd"
+	"github.com/moby/buildkit/util/leaseutil"
+	bolt "go.etcd.io/bbolt"
 )
 
 const labelCreatedAt = "buildkit/createdat"
@@ -58,22 +73,28 @@ const labelCreatedAt = "buildkit/createdat"
 // WorkerOpt is specific to a worker.
 // See also CommonOpt.
 type WorkerOpt struct {
-	ID              string
-	Labels          map[string]string
-	Platforms       []ocispecs.Platform
-	GCPolicy        []client.PruneInfo
-	Executor        executor.Executor
-	Snapshotter     snapshot.Snapshotter
-	ContentStore    content.Store
-	Applier         diff.Applier
-	Differ          diff.Comparer
-	ImageStore      images.Store // optional
+	ID           string
+	Labels       map[string]string
+	Platforms    []ocispecs.Platform
+	GCPolicy     []client.PruneInfo
+	Executor     executor.Executor
+	Snapshotter  snapshot.Snapshotter
+	ContentStore content.Store
+	Applier      diff.Applier
+	Differ       diff.Comparer
+	ImageStore   images.Store // optional
+
+	DockerImageStore  dockerimage.Store
+	DownloadManager   *xfer.LayerDownloadManager
+	V2MetadataService dockermetadata.V2MetadataService
+	LayerStore        layer.Store
+	ReferenceStore    refstore.Store
+
 	RegistryHosts   docker.RegistryHosts
 	IdentityMapping *idtools.IdentityMapping
 	LeaseManager    leases.Manager
 	GarbageCollect  func(context.Context) (gc.Stats, error)
 	ParallelismSem  *semaphore.Weighted
-	MetadataStore   *metadata.Store
 	MountPoolRoot   string
 }
 
@@ -89,39 +110,129 @@ type Worker struct {
 
 // NewWorker instantiates a local worker
 func NewWorker(ctx context.Context, opt WorkerOpt) (*Worker, error) {
-	imageRefChecker := imagerefchecker.New(imagerefchecker.Opt{
-		ImageStore:   opt.ImageStore,
-		ContentStore: opt.ContentStore,
-	})
-
-	cm, err := cache.NewManager(cache.ManagerOpt{
-		Snapshotter:     opt.Snapshotter,
-		PruneRefChecker: imageRefChecker,
-		Applier:         opt.Applier,
-		GarbageCollect:  opt.GarbageCollect,
-		LeaseManager:    opt.LeaseManager,
-		ContentStore:    opt.ContentStore,
-		Differ:          opt.Differ,
-		MetadataStore:   opt.MetadataStore,
-		MountPoolRoot:   opt.MountPoolRoot,
-	})
-	if err != nil {
-		return nil, err
-	}
-
 	sm, err := source.NewManager()
 	if err != nil {
 		return nil, err
 	}
 
+	root := "/var/lib/docker"
+	graphDriver := "overlay2"
+	layerStore, err := layer.NewStoreFromOptions(layer.StoreOptions{
+		Root:                      root,
+		MetadataStorePathTemplate: filepath.Join(root, "image", "%s", "layerdb"),
+		GraphDriver:               graphDriver,
+		GraphDriverOptions:        []string{},
+		IDMapping:                 &idtools.IdentityMapping{},
+		ExperimentalEnabled:       false,
+	})
+	if err != nil {
+		panic(err)
+	}
+	imageRoot := filepath.Join(root, "image", graphDriver)
+	ifs, err := image.NewFSStoreBackend(filepath.Join(imageRoot, "imagedb"))
+	if err != nil {
+		panic(err)
+	}
+
+	imageStore, err := image.NewImageStore(ifs, layerStore)
+	if err != nil {
+		panic(err)
+	}
+
+	store, err := containerdlocal.NewStore(filepath.Join(root, "content"))
+	if err != nil {
+		return nil, err
+	}
+
+	db, err := bolt.Open(filepath.Join(root, "containerdmeta.db"), 0644, nil)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	mdb := ctdmetadata.NewDB(db, store, map[string]snapshots.Snapshotter{})
+
+	store = containerdsnapshot.NewContentStore(mdb.ContentStore(), "buildkit")
+
+	lm := leaseutil.WithNamespace(ctdmetadata.NewLeaseManager(mdb), "buildkit")
+
+	var driver graphdriver.Driver
+	if ls, ok := layerStore.(interface {
+		Driver() graphdriver.Driver
+	}); ok {
+		driver = ls.Driver()
+	} else {
+		return nil, errors.Errorf("could not access graphdriver")
+	}
+
+	snapshotter, lm, err := dockersnapshot.NewSnapshotter(dockersnapshot.Opt{
+		GraphDriver:     driver,
+		LayerStore:      layerStore,
+		Root:            root,
+		IdentityMapping: opt.IdentityMapping,
+	}, lm)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := cache.MigrateV2(context.Background(), filepath.Join(root, "metadata.db"), filepath.Join(root, "metadata_v2.db"), store, snapshotter, lm); err != nil {
+		return nil, err
+	}
+
+	md, err := metadata.NewStore(filepath.Join(root, "metadata_v2.db"))
+	if err != nil {
+		return nil, err
+	}
+
+	layerGetter, ok := snapshotter.(imagerefchecker.LayerGetter)
+	if !ok {
+		return nil, errors.Errorf("snapshotter does not implement layergetter")
+	}
+
+	refChecker := imagerefchecker.New(imagerefchecker.Opt{
+		ImageStore: &imageStoreWithLease{
+			Store:  imageStore,
+			leases: lm,
+			ns:     "buildkit",
+		},
+		LayerGetter: layerGetter,
+	})
+
+	cm, err := cache.NewManager(cache.ManagerOpt{
+		Snapshotter:     snapshotter,
+		MetadataStore:   md,
+		PruneRefChecker: refChecker,
+		LeaseManager:    lm,
+		ContentStore:    store,
+		GarbageCollect:  mdb.GarbageCollect,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	refStoreLocation := filepath.Join(imageRoot, `repositories.json`)
+	referenceStore, err := refstore.NewReferenceStore(refStoreLocation)
+	if err != nil {
+		panic(err)
+	}
+
+	downloadManager := xfer.NewLayerDownloadManager(layerStore, 1, xfer.WithMaxDownloadAttempts(1))
+
+	distributionMetadataStore, err := dockermetadata.NewFSMetadataStore(filepath.Join(imageRoot, "distribution"))
+	if err != nil {
+		return nil, err
+	}
+
 	is, err := containerimage.NewSource(containerimage.SourceOpt{
-		Snapshotter:   opt.Snapshotter,
-		ContentStore:  opt.ContentStore,
-		Applier:       opt.Applier,
-		ImageStore:    opt.ImageStore,
-		CacheAccessor: cm,
-		RegistryHosts: opt.RegistryHosts,
-		LeaseManager:  opt.LeaseManager,
+		CacheAccessor:   cm,
+		ContentStore:    store,
+		DownloadManager: downloadManager,
+		MetadataStore:   dockermetadata.NewV2MetadataService(distributionMetadataStore),
+		ImageStore:      imageStore,
+		ReferenceStore:  referenceStore,
+		RegistryHosts:   opt.RegistryHosts,
+		LayerStore:      layerStore,
+		LeaseManager:    lm,
+		GarbageCollect:  mdb.GarbageCollect,
 	})
 	if err != nil {
 		return nil, err

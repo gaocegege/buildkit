@@ -21,6 +21,8 @@ import (
 	"github.com/containerd/containerd/remotes/docker"
 	"github.com/containerd/containerd/sys"
 	sddaemon "github.com/coreos/go-systemd/v22/daemon"
+	_ "github.com/docker/docker/daemon/graphdriver/overlay2"
+	"github.com/docker/docker/image"
 	"github.com/docker/docker/pkg/reexec"
 	"github.com/gofrs/flock"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
@@ -83,6 +85,7 @@ type workerInitializerOpt struct {
 	config         *config.Config
 	sessionManager *session.Manager
 	traceSocket    string
+	imageStore     image.Store
 }
 
 type workerInitializer struct {

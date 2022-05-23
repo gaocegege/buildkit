@@ -137,14 +137,14 @@ func init() {
 		Hidden: len(defaultConf.Workers.Containerd.GCPolicy) != 0,
 	})
 
-	registerWorkerInitializer(
-		workerInitializer{
-			fn: containerdWorkerInitializer,
-			// 1 is less preferred than 0 (runcCtor)
-			priority: 1,
-		},
-		flags...,
-	)
+	// registerWorkerInitializer(
+	// 	workerInitializer{
+	// 		fn: containerdWorkerInitializer,
+	// 		// 1 is less preferred than 0 (runcCtor)
+	// 		priority: 1,
+	// 	},
+	// 	flags...,
+	// )
 	// TODO(AkihiroSuda): allow using multiple snapshotters. should be useful for some applications that does not work with the default overlay snapshotter. e.g. mysql (docker/for-linux#72)",
 }
 

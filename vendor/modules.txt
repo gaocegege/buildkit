@@ -1,3 +1,7 @@
+# github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1
+## explicit; go 1.16
+github.com/Azure/go-ansiterm
+github.com/Azure/go-ansiterm/winterm
 # github.com/Microsoft/go-winio v0.5.1
 ## explicit; go 1.12
 github.com/Microsoft/go-winio
@@ -41,12 +45,16 @@ github.com/armon/circbuf
 # github.com/beorn7/perks v1.0.1
 ## explicit; go 1.11
 github.com/beorn7/perks/quantile
+# github.com/boltdb/bolt v1.3.1
+## explicit
 # github.com/cenkalti/backoff/v4 v4.1.2
 ## explicit; go 1.13
 github.com/cenkalti/backoff/v4
 # github.com/cespare/xxhash/v2 v2.1.2
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
+# github.com/cilium/ebpf v0.7.0
+## explicit; go 1.16
 # github.com/containerd/cgroups v1.0.3
 ## explicit; go 1.16
 github.com/containerd/cgroups/stats/v1
@@ -190,6 +198,8 @@ github.com/containernetworking/cni/pkg/types/create
 github.com/containernetworking/cni/pkg/types/internal
 github.com/containernetworking/cni/pkg/utils
 github.com/containernetworking/cni/pkg/version
+# github.com/coreos/etcd v3.3.13+incompatible
+## explicit
 # github.com/coreos/go-systemd/v22 v22.3.2
 ## explicit; go 1.12
 github.com/coreos/go-systemd/v22/activation
@@ -197,6 +207,8 @@ github.com/coreos/go-systemd/v22/daemon
 # github.com/cpuguy83/go-md2man/v2 v2.0.0
 ## explicit; go 1.12
 github.com/cpuguy83/go-md2man/v2/md2man
+# github.com/cyphar/filepath-securejoin v0.2.3
+## explicit; go 1.13
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
@@ -212,9 +224,23 @@ github.com/docker/cli/cli/config/types
 github.com/docker/cli/cli/connhelper/commandconn
 # github.com/docker/distribution v2.8.0+incompatible
 ## explicit
+github.com/docker/distribution
 github.com/docker/distribution/digestset
+github.com/docker/distribution/manifest
+github.com/docker/distribution/manifest/manifestlist
+github.com/docker/distribution/manifest/ocischema
+github.com/docker/distribution/manifest/schema1
+github.com/docker/distribution/manifest/schema2
+github.com/docker/distribution/metrics
 github.com/docker/distribution/reference
 github.com/docker/distribution/registry/api/errcode
+github.com/docker/distribution/registry/api/v2
+github.com/docker/distribution/registry/client
+github.com/docker/distribution/registry/client/auth
+github.com/docker/distribution/registry/client/auth/challenge
+github.com/docker/distribution/registry/client/transport
+github.com/docker/distribution/registry/storage/cache
+github.com/docker/distribution/registry/storage/cache/memory
 # github.com/docker/docker v20.10.7+incompatible => github.com/docker/docker v20.10.3-0.20220224222438-c78f6963a1c0+incompatible
 ## explicit
 github.com/docker/docker/api
@@ -233,23 +259,54 @@ github.com/docker/docker/api/types/swarm/runtime
 github.com/docker/docker/api/types/time
 github.com/docker/docker/api/types/versions
 github.com/docker/docker/api/types/volume
+github.com/docker/docker/builder/builder-next/adapters/snapshot
+github.com/docker/docker/builder/builder-next/imagerefchecker
 github.com/docker/docker/client
+github.com/docker/docker/daemon/graphdriver
+github.com/docker/docker/daemon/graphdriver/overlay2
+github.com/docker/docker/daemon/graphdriver/overlayutils
+github.com/docker/docker/distribution
+github.com/docker/docker/distribution/metadata
+github.com/docker/docker/distribution/xfer
+github.com/docker/docker/dockerversion
 github.com/docker/docker/errdefs
+github.com/docker/docker/image
+github.com/docker/docker/image/v1
+github.com/docker/docker/layer
 github.com/docker/docker/libnetwork/ipamutils
 github.com/docker/docker/libnetwork/resolvconf
 github.com/docker/docker/libnetwork/types
+github.com/docker/docker/oci
+github.com/docker/docker/oci/caps
 github.com/docker/docker/opts
 github.com/docker/docker/pkg/archive
 github.com/docker/docker/pkg/chrootarchive
+github.com/docker/docker/pkg/containerfs
+github.com/docker/docker/pkg/directory
 github.com/docker/docker/pkg/fileutils
+github.com/docker/docker/pkg/fsutils
 github.com/docker/docker/pkg/homedir
 github.com/docker/docker/pkg/idtools
 github.com/docker/docker/pkg/ioutils
+github.com/docker/docker/pkg/jsonmessage
 github.com/docker/docker/pkg/longpath
+github.com/docker/docker/pkg/parsers
+github.com/docker/docker/pkg/parsers/kernel
+github.com/docker/docker/pkg/plugingetter
+github.com/docker/docker/pkg/plugins
+github.com/docker/docker/pkg/plugins/transport
 github.com/docker/docker/pkg/pools
+github.com/docker/docker/pkg/progress
 github.com/docker/docker/pkg/reexec
+github.com/docker/docker/pkg/stringid
 github.com/docker/docker/pkg/system
+github.com/docker/docker/pkg/useragent
+github.com/docker/docker/plugin/v2
 github.com/docker/docker/profiles/seccomp
+github.com/docker/docker/quota
+github.com/docker/docker/reference
+github.com/docker/docker/registry
+github.com/docker/docker/rootless
 # github.com/docker/docker-credential-helpers v0.6.4
 ## explicit; go 1.13
 github.com/docker/docker-credential-helpers/client
@@ -268,9 +325,16 @@ github.com/docker/go-metrics
 # github.com/docker/go-units v0.4.0
 ## explicit
 github.com/docker/go-units
+# github.com/docker/libtrust v0.0.0-20150114040149-fa567046d9b1
+## explicit
+github.com/docker/libtrust
+# github.com/docker/swarmkit v1.12.1-0.20220310181515-cf1e0f8d95ee
+## explicit
 # github.com/felixge/httpsnoop v1.0.2
 ## explicit; go 1.13
 github.com/felixge/httpsnoop
+# github.com/fsnotify/fsnotify v1.4.9
+## explicit; go 1.13
 # github.com/go-logr/logr v1.2.2
 ## explicit; go 1.16
 github.com/go-logr/logr
@@ -278,6 +342,8 @@ github.com/go-logr/logr/funcr
 # github.com/go-logr/stdr v1.2.2
 ## explicit; go 1.16
 github.com/go-logr/stdr
+# github.com/godbus/dbus/v5 v5.0.6
+## explicit; go 1.12
 # github.com/gofrs/flock v0.7.3
 ## explicit
 github.com/gofrs/flock
@@ -321,6 +387,9 @@ github.com/google/shlex
 # github.com/google/uuid v1.3.0
 ## explicit
 github.com/google/uuid
+# github.com/gorilla/mux v1.8.0
+## explicit; go 1.12
+github.com/gorilla/mux
 # github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 ## explicit; go 1.14
 github.com/grpc-ecosystem/go-grpc-middleware
@@ -345,13 +414,15 @@ github.com/hashicorp/go-cleanhttp
 # github.com/hashicorp/go-immutable-radix v1.3.1
 ## explicit
 github.com/hashicorp/go-immutable-radix
+# github.com/hashicorp/go-memdb v1.3.3
+## explicit; go 1.13
 # github.com/hashicorp/go-multierror v1.1.1
 ## explicit; go 1.13
 github.com/hashicorp/go-multierror
 # github.com/hashicorp/go-retryablehttp v0.7.0
 ## explicit; go 1.13
 github.com/hashicorp/go-retryablehttp
-# github.com/hashicorp/golang-lru v0.5.3
+# github.com/hashicorp/golang-lru v0.5.4
 ## explicit; go 1.12
 github.com/hashicorp/golang-lru/simplelru
 # github.com/ishidawataru/sctp v0.0.0-20210226210310-f2269e66cdee
@@ -383,8 +454,13 @@ github.com/moby/sys/mountinfo
 # github.com/moby/sys/signal v0.6.0
 ## explicit; go 1.16
 github.com/moby/sys/signal
+# github.com/moby/sys/symlink v0.2.0
+## explicit; go 1.16
+github.com/moby/sys/symlink
 # github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6
 ## explicit; go 1.13
+github.com/moby/term
+github.com/moby/term/windows
 # github.com/morikuni/aec v1.0.0
 ## explicit
 github.com/morikuni/aec
@@ -398,6 +474,7 @@ github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
 # github.com/opencontainers/runc v1.1.1
 ## explicit; go 1.16
+github.com/opencontainers/runc/libcontainer/devices
 github.com/opencontainers/runc/libcontainer/user
 # github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417
 ## explicit
@@ -477,6 +554,8 @@ github.com/urfave/cli
 # github.com/vbatts/tar-split v0.11.2
 ## explicit; go 1.15
 github.com/vbatts/tar-split/archive/tar
+github.com/vbatts/tar-split/tar/asm
+github.com/vbatts/tar-split/tar/storage
 # go.etcd.io/bbolt v1.3.6
 ## explicit; go 1.12
 go.etcd.io/bbolt
@@ -699,4 +778,14 @@ google.golang.org/protobuf/types/known/wrapperspb
 # gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 ## explicit
 gopkg.in/yaml.v3
+# gotest.tools/v3 v3.0.3
+## explicit; go 1.11
+gotest.tools/v3/assert
+gotest.tools/v3/assert/cmp
+gotest.tools/v3/fs
+gotest.tools/v3/internal/assert
+gotest.tools/v3/internal/cleanup
+gotest.tools/v3/internal/difflib
+gotest.tools/v3/internal/format
+gotest.tools/v3/internal/source
 # github.com/docker/docker => github.com/docker/docker v20.10.3-0.20220224222438-c78f6963a1c0+incompatible
